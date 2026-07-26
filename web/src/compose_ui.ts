@@ -962,8 +962,13 @@ export let format_text = (
         const sections = section_off_selected_lines();
         let {before_lines, selected_lines, after_lines} = sections;
         const {separating_new_line_before, separating_new_line_after} = sections;
-        // If there is even a single unmarked line selected, we mark all.
-        const should_mark = selected_lines.split("\n").some((line) => !is_marked(line));
+        // Blank lines never have markers, so exclude them when deciding whether
+        // to mark or unmark. Otherwise a selection containing blank lines would
+        // always be detected as "needs marking", causing the marker to be
+        // prepended again on every click instead of toggling off.
+        const non_blank_lines = selected_lines.split("\n").filter((line) => line.trim() !== "");
+        const should_mark =
+            non_blank_lines.length === 0 || non_blank_lines.some((line) => !is_marked(line));
         if (should_mark) {
             const lines = selected_lines.split("\n");
             // Only skip blank lines for multi-line selections, where blanks
@@ -977,10 +982,20 @@ export let format_text = (
                 if (skip_blank_lines && line.trim() === "") {
                     processed_lines.push(line);
                 } else {
+                    // Strip any existing list marker first, so switching
+                    // between bulleted and numbered doesn't stack markers
+                    // (e.g. "- x" + numbered click should give "1. x", not
+                    // "1. - x").
+                    let stripped = line;
+                    if (bulleted_numbered_list_util.is_bulleted(line)) {
+                        stripped = bulleted_numbered_list_util.strip_bullet(line);
+                    } else if (bulleted_numbered_list_util.is_numbered(line)) {
+                        stripped = bulleted_numbered_list_util.strip_numbering(line);
+                    }
                     if (type === "bulleted") {
-                        processed_lines.push("- " + line);
+                        processed_lines.push("- " + stripped);
                     } else {
-                        processed_lines.push(counter + ". " + line);
+                        processed_lines.push(counter + ". " + stripped);
                         counter += 1;
                     }
                 }
