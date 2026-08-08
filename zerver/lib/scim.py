@@ -309,6 +309,14 @@ class ZulipSCIMUser(SCIMUser):
 
         self.save()
 
+    def handle_add(
+        self,
+        path: AttrPath | None,
+        value: str | list[object] | dict[AttrPath, object],
+        operation: Any,
+    ) -> None:
+        self.handle_replace(path, value, operation)
+
     def save(self) -> None:
         """
         This method is called at the end of operations modifying a user,
