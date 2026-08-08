@@ -75,6 +75,12 @@ end
 
 -- All-or-nothing: if any rule triggered, reject without updating.
 if limited then
+    -- Enforce a minimum floor to avoid retry-after values in the past
+    -- due to network latency and clock skew
+    if secs_to_freedom > 0 and secs_to_freedom < 0.05 then
+        secs_to_freedom = 0.05
+    end
+    secs_to_freedom = math.floor(secs_to_freedom * 1000) / 1000  -- round to ms
     return {'1', string.format('%.17g', secs_to_freedom), '0', '0'}
 end
 
