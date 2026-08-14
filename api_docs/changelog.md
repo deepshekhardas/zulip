@@ -20,6 +20,40 @@ format used by the Zulip server that they are interacting with.
 
 ## Changes in Zulip 13.0
 
+**Feature level 509**
+
+* [`PATCH /messages/{message_id}`](/api/update-message): Fixed a bug where
+  passing the `stream_id` that the message is already in was processed as
+  a channel move.
+
+**Feature level 508**
+
+* [`POST /messages`](/api/send-message): Added `message_url` and
+  `message_link` fields to the response.
+
+**Feature level 507**
+
+* [`POST /users/me/subscriptions`](/api/subscribe),
+  [`POST /channels/create`](/api/create-channel),
+  [`PATCH /streams/{stream_id}`](/api/update-stream): Added
+  `default_push_notifications` boolean parameter that controls whether
+  mobile push notifications are enabled by default when a user first
+  subscribes to the channel, potentially overriding the user's [default
+  mobile notification
+  setting](/help/channel-notifications#configure-default-notifications-for-all-channels)
+  for channel messages. Only organization administrators can set or
+  modify this parameter.
+
+* [`POST /register`](/api/register-queue), [`GET /events`](/api/get-events),
+  [`GET /streams`](/api/get-streams),
+  [`GET /streams/{stream_id}`](/api/get-stream-by-id): Added
+  `default_push_notifications` boolean field to channel objects, which
+  indicates whether mobile push notifications will be enabled by default
+  when a user first subscribes to the channel, potentially overriding the
+  user's [default mobile notification
+  setting](/help/channel-notifications#configure-default-notifications-for-all-channels)
+  for channel messages.
+
 **Feature level 506**
 
 * [`GET /export/realm`](/api/get-realm-exports),
@@ -1620,9 +1654,9 @@ No changes; feature level used for Zulip 10.0 release.
   `server_max_deactivated_realm_deletion_days` fields for the permitted
   number of days before full data deletion of a deactivated organization
   on the server.
-* `POST /realm/deactivate`: Added `deletion_delay_days` parameter to
-  support setting when a full data deletion of the deactivated
-  organization may be done.
+* [`POST /realm/deactivate`](/api/deactivate-realm): Added
+  `deletion_delay_days` parameter to support setting when a full data
+  deletion of the deactivated organization may be done.
 
 **Feature level 331**
 
@@ -3012,7 +3046,7 @@ No changes; feature level used for Zulip 8.0 release.
   `enable_followed_topic_desktop_notifications`
   and `enable_followed_topic_audible_notifications` to control whether a user
   receives email, push, wildcard mention, visual desktop and audible desktop
-  notifications, respectively, for messages sent to followed topics.
+  notifications, respectively, for messages sent to followed topics.
 
 **Feature level 188**
 

@@ -15,6 +15,7 @@ from django.utils.timezone import now as timezone_now
 from confirmation.models import Confirmation
 from corporate.lib.stripe import get_latest_seat_count
 from zerver.actions.create_user import do_create_user, do_reactivate_user
+from zerver.actions.custom_profile_fields import do_update_user_custom_profile_data_if_changed
 from zerver.actions.invites import do_create_multiuse_invite_link, do_invite_users
 from zerver.actions.message_send import RecipientInfoResult, get_recipient_info
 from zerver.actions.muted_users import do_mute_user
@@ -999,7 +1000,7 @@ class PermissionTest(ZulipTestCase):
         empty_profile_data = []
         for field_name in fields:
             field = CustomProfileField.objects.get(name=field_name, realm=realm)
-            value: str | None | list[Any] = ""
+            value: str | list[Any] | None = ""
             if field.field_type == CustomProfileField.USER:
                 value = []
             empty_profile_data.append(
@@ -2499,10 +2500,12 @@ class ActivateTest(ZulipTestCase):
         self.assertEqual(
             info_log.output,
             [
-                f"WARNING:zulip.send_email:ScheduledEmail {email_id} at {scheduled_at} "
-                "had empty users and address attributes: "
-                "{'template_prefix': 'zerver/emails/onboarding_zulip_topics', 'from_name': None, "
-                "'from_address': None, 'language': None, 'context': {}}"
+                (
+                    f"WARNING:zulip.send_email:ScheduledEmail {email_id} at {scheduled_at} "
+                    "had empty users and address attributes: "
+                    "{'template_prefix': 'zerver/emails/onboarding_zulip_topics', 'from_name': None, "
+                    "'from_address': None, 'language': None, 'context': {}}"
+                )
             ],
         )
 
@@ -2926,7 +2929,7 @@ class RecipientInfoTest(ZulipTestCase):
             um_eligible_user_ids=all_user_ids,
             long_term_idle_user_ids=set(),
             default_bot_user_ids=set(),
-            service_bot_tuples=[],
+            message_triggered_bot_tuples=[],
             all_bot_user_ids=set(),
             topic_participant_user_ids=set(),
             sender_muted_stream=False,
@@ -3149,9 +3152,9 @@ class RecipientInfoTest(ZulipTestCase):
         self.assertEqual(info.stream_push_user_ids, set())
         self.assertEqual(info.stream_wildcard_mention_user_ids, {othello.id})
 
-        # Add a service bot.
-        service_bot = do_create_user(
-            email="service-bot@zulip.com",
+        # Add a message-triggered bot.
+        message_triggered_bot = do_create_user(
+            email="message-triggered-bot@zulip.com",
             password="",
             realm=realm,
             full_name="",
@@ -3164,12 +3167,12 @@ class RecipientInfoTest(ZulipTestCase):
             recipient=recipient,
             sender_id=hamlet.id,
             stream_topic=stream_topic,
-            possibly_mentioned_user_ids={service_bot.id},
+            possibly_mentioned_user_ids={message_triggered_bot.id},
         )
         self.assertEqual(
-            info.service_bot_tuples,
+            info.message_triggered_bot_tuples,
             [
-                (service_bot.id, UserProfile.EMBEDDED_BOT),
+                (message_triggered_bot.id, UserProfile.EMBEDDED_BOT),
             ],
         )
 
@@ -3188,10 +3191,10 @@ class RecipientInfoTest(ZulipTestCase):
             recipient=recipient,
             sender_id=hamlet.id,
             stream_topic=stream_topic,
-            possibly_mentioned_user_ids={service_bot.id, normal_bot.id},
+            possibly_mentioned_user_ids={message_triggered_bot.id, normal_bot.id},
         )
         self.assertEqual(info.default_bot_user_ids, {normal_bot.id})
-        self.assertEqual(info.all_bot_user_ids, {normal_bot.id, service_bot.id})
+        self.assertEqual(info.all_bot_user_ids, {normal_bot.id, message_triggered_bot.id})
 
         # Now Hamlet follows the topic with the 'followed_topic_email_notifications',
         # 'followed_topic_push_notifications' and 'followed_topic_wildcard_mention_notify'
@@ -3782,6 +3785,32 @@ class GetProfileTest(ZulipTestCase):
         # no personal messages history between desdemona and polonius
         self.assertFalse(check_can_access_user(desdemona, polonius))
 
+    def test_check_can_access_user_for_a_guest_with_themself(self) -> None:
+        """
+        Test that the behaviour and query count are the same
+        for both cases, a normal guest and a guest with limited user access,
+        when calling check_can_access_user() for a user on themself.
+        """
+        # A guest is not limited by default.
+        polonius = self.example_user("polonius")
+        with self.assert_database_query_count(0):
+            self.assertTrue(check_can_access_user(polonius, polonius))
+
+        # Give guests limited user access.
+        self.set_up_db_for_testing_user_access()
+        polonius = self.example_user("polonius")
+
+        # When guest has limited user access,
+        # query count should not increase.
+        with self.assert_database_query_count(0):
+            self.assertTrue(check_can_access_user(polonius, polonius))
+
+    def test_check_can_access_user_for_a_spectator(self) -> None:
+        # A spectator can always access users since spectators
+        # already have very limited access to users.
+        hamlet = self.example_user("hamlet")
+        self.assertTrue(check_can_access_user(hamlet, None))
+
     def test_get_users_involved_in_dms_excludes_deactivated_users(self) -> None:
         hamlet = self.example_user("hamlet")
         othello = self.example_user("othello")
@@ -3891,6 +3920,38 @@ class GetProfileTest(ZulipTestCase):
             len(all_fetched_users),
             UserProfile.objects.filter(realm=hamlet.realm, is_bot=True).count(),
         )
+
+    def test_spectators_cannot_fetch_custom_profile_fields(self) -> None:
+        # Custom profile fields can hold personal information (phone
+        # numbers, birthdays, etc.), so spectators must never receive
+        # them, even if they pass include_custom_profile_fields=true.
+        realm = get_realm("zulip")
+        hamlet = self.example_user("hamlet")
+        phone_field = CustomProfileField.objects.get(name="Phone number", realm=realm)
+        sentinel_value = "spectator-must-not-see-this"
+        do_update_user_custom_profile_data_if_changed(
+            hamlet,
+            [{"id": phone_field.id, "value": sentinel_value}],
+            acting_user=None,
+            notify=False,
+        )
+
+        # A spectator passing the flag must not trigger the extra query
+        # for custom profile field values, and the response must not
+        # contain profile_data for any user.
+        with self.assert_database_query_count(4):
+            result = self.client_get("/json/users", {"include_custom_profile_fields": "true"})
+        self.assert_json_success(result)
+        self.assertNotIn(sentinel_value, result.content.decode())
+        for user in orjson.loads(result.content)["members"]:
+            self.assertNotIn("profile_data", user)
+
+        # Sanity check that authenticated users still receive the data,
+        # confirming the fix didn't break the intended behavior.
+        self.login("othello")
+        result = self.client_get("/json/users", {"include_custom_profile_fields": "true"})
+        self.assert_json_success(result)
+        self.assertIn(sentinel_value, result.content.decode())
 
 
 class DeleteUserTest(ZulipTestCase):

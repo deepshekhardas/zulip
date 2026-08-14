@@ -1,4 +1,4 @@
-import $ from "jquery";
+import {$} from "jquery";
 import _ from "lodash";
 import assert from "minimalistic-assert";
 
@@ -130,7 +130,7 @@ function empty_search_query_banner(
 
     // Gather information about each query word
     for (const query_word of query_words) {
-        if (realm.stop_words.includes(query_word)) {
+        if (realm.stop_words.includes(query_word.toLowerCase())) {
             search_string_result.has_stop_word = true;
             search_string_result.query_words.push({
                 query_word,
@@ -560,7 +560,7 @@ export function pick_empty_narrow_banner(
                 };
             }
             const valid_people_in_dms: people.User[] = [];
-            for (const user of people_in_dms.values()) {
+            for (const user of people_in_dms) {
                 if (user === undefined) {
                     return {
                         // We don't pinpoint which user is invalid,

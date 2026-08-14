@@ -51,7 +51,7 @@ prod = [
   "firebase-admin",
 
   # Needed for the email mirror
-  "html2text",
+  "markdownify",
   "talon-core",
 
   # Needed for inlining the CSS in emails
@@ -463,7 +463,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 # See https://github.com/astral-sh/ruff#rules for error code definitions.
-select = [
+extend-select = [
     "ANN", # annotations
     "B", # bugbear
     "C4", # comprehensions
@@ -477,6 +477,7 @@ select = [
     "FURB", # refurbishing
     "G", # logging format
     "I", # import sorting
+    "INP", # implicit namespace package
     "INT", # gettext
     "ISC", # string concatenation
     "LOG", # logging
@@ -503,6 +504,7 @@ ignore = [
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
     "B007", # Loop control variable not used within the loop body
     "B904", # Within an except clause, raise exceptions with raise ... from err or raise ... from None to distinguish them from errors in exception handling
+    "BLE001", # Do not catch blind exception
     "C408", # Unnecessary `dict` call (rewrite as a literal)
     "COM812", # Trailing comma missing
     "DJ001", # Avoid using `null=True` on string-based fields
@@ -521,6 +523,7 @@ ignore = [
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments to function call
     "PLR0915", # Too many statements
+    "PLR0917", # Too many positional arguments
     "PLR2004", # Magic value used in comparison
     "PLR5501", # Consider using `elif` instead of `else` then `if` to remove one indentation level
     "PLW0603", # Using the global statement is discouraged
@@ -549,6 +552,8 @@ ignore = [
     "TC002", # Move third-party import into a type-checking block
     "TC003", # Move standard library import into a type-checking block
     "TC006", # Add quotes to type expression in `typing.cast()`
+    "TRY002", # Create your own exception
+    "TRY004", # Prefer `TypeError` exception for invalid type
 ]
 
 [tool.ruff.lint.flake8-bandit]
