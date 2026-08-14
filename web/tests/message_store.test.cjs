@@ -201,13 +201,9 @@ test("message_booleans_parity", () => {
             raw_message: set_message,
         }).message;
         message_store.update_booleans(update_message, flags);
-        for (const key of Object.keys(expected_message)) {
-            assert.equal(
-                set_message[key],
-                expected_message[key],
-                `'${key}' != ${expected_message[key]}`,
-            );
-            assert.equal(update_message[key], expected_message[key]);
+        for (const [key, expected_value] of Object.entries(expected_message)) {
+            assert.equal(set_message[key], expected_value, `'${key}' != ${expected_value}`);
+            assert.equal(update_message[key], expected_value);
         }
         assert.equal(set_message.topic, "convert_raw_message_to_message_with_booleans");
         assert.equal(update_message.topic, "update_booleans");
@@ -278,7 +274,7 @@ test("errors", ({disallow_rewire}) => {
 
     // This should early return and not run pm_conversations.set_partner
     disallow_rewire(pm_conversations, "set_partner");
-    pm_conversations.process_message(message);
+    pm_conversations.process_message(message, false);
 });
 
 test("reify_message_id", () => {

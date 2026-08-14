@@ -497,8 +497,10 @@ class TestStreamEmailMessages(ZulipTestCase):
         self.assertEqual(
             m.output,
             [
-                f"INFO:{logger_name}:Failed to process email to {stream.name} ({stream.realm.string_id}): "
-                f"Not authorized to send to channel '{stream.name}'",
+                (
+                    f"INFO:{logger_name}:Failed to process email to {stream.name} ({stream.realm.string_id}): "
+                    f"Not authorized to send to channel '{stream.name}'"
+                )
             ],
         )
         self.assertEqual(Message.objects.latest("id").id, last_message_id)
@@ -1409,7 +1411,7 @@ class TestMissedMessageEmailMessages(ZulipTestCase):
         incoming_valid_message["To"] = mm_address
         incoming_valid_message["Reply-to"] = user_profile.delivery_email
 
-        with self.assert_database_query_count(18):
+        with self.assert_database_query_count(19):
             process_message(incoming_valid_message)
 
         # confirm that Hamlet got the message
@@ -2105,11 +2107,14 @@ class TestEmailMirrorServer(ZulipTestCase):
             self.assertLogs("zerver.lib.email_mirror", "ERROR") as error_log,
         ):
             send_to_postmaster(email)
-            self.assert_length(error_log.output, 1)
+            self.assert_length(error_log.records, 1)
+            self.assertEqual(error_log.records[0].levelname, "ERROR")
             self.assertEqual(
-                error_log.output[0].splitlines()[0],
-                "ERROR:zerver.lib.email_mirror:Error sending bounce email to ['desdemona+admin@zulip.com']: moose",
+                error_log.records[0].getMessage(),
+                "Error sending bounce email to ['desdemona+admin@zulip.com']",
             )
+            assert error_log.records[0].exc_info is not None
+            self.assertEqual(str(error_log.records[0].exc_info[1]), "moose")
 
         with (
             mock.patch.object(

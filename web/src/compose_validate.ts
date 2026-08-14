@@ -1,4 +1,4 @@
-import $ from "jquery";
+import {$} from "jquery";
 import _ from "lodash";
 import type {ReferenceElement} from "tippy.js";
 
@@ -69,7 +69,7 @@ export const get_topics_required_error_tooltip_message_html = (): string => {
 };
 export const get_message_too_long_for_compose_error = (): string =>
     $t(
-        {defaultMessage: `Message length shouldn't be greater than {max_length} characters.`},
+        {defaultMessage: "Message length shouldn't be greater than {max_length} characters."},
         {max_length: realm.max_message_length},
     );
 export const NO_MESSAGE_CONTENT_ERROR_MESSAGE = $t({defaultMessage: "Compose a message."});
@@ -296,10 +296,12 @@ export async function warn_if_private_stream_is_linked(
     );
 
     if (!existing_stream_warnings.includes(linked_stream.stream_id)) {
+        const audience_channel = stream_data.get_sub_by_id(stream_id)!;
         const new_row_html = render_private_stream_warning({
             stream_id: linked_stream.stream_id,
             banner_type: compose_banner.WARNING,
             channel_name: linked_stream.name,
+            audience_channel_name: audience_channel.name,
             classname: compose_banner.CLASSNAMES.private_stream_warning,
         });
         compose_banner.append_compose_banner_to_banner_list($(new_row_html), $banner_container);
@@ -1188,7 +1190,7 @@ export let validate = (scheduling_message: boolean, show_banner = true): boolean
     disabled_send_tooltip_message_html = "";
     // Clear previous banners from the previous compose state; the
     // validation checks below will re-add any that are still relevant.
-    compose_banner.clear_errors();
+    compose_banner.clear_validation_errors();
     // Reset compose textarea state; validate_private_message may
     // disable it if the recipient is invalid.
     set_compose_textarea_disabled(false);
@@ -1226,7 +1228,8 @@ export let validate = (scheduling_message: boolean, show_banner = true): boolean
         }
         is_validating_compose_box = false;
         return false;
-    } else if ($("textarea#compose-textarea").hasClass("invalid")) {
+    }
+    if ($("textarea#compose-textarea").hasClass("invalid")) {
         // Hide the invalid indicator now that it's non-empty.
         $("textarea#compose-textarea").toggleClass("invalid", false);
     }

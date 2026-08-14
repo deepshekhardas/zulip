@@ -1,4 +1,4 @@
-import $ from "jquery";
+import {$} from "jquery";
 import _ from "lodash";
 import assert from "minimalistic-assert";
 import * as z from "zod/mini";
@@ -423,7 +423,8 @@ export function mark_as_unread_from_here(message_id: number): void {
             do_mark_unread(undefined);
         }
         return;
-    } else if (prefer_local_ids) {
+    }
+    if (prefer_local_ids) {
         // Since we have the anchor message ID and the newest
         // messages, we know exactly which messages to mark as unread.
         if (locally_available_matching_message_ids.length < MIN_MARK_AS_UNREAD_COUNT_KNOWN) {
@@ -829,7 +830,7 @@ export function mark_all_as_read(modal_id?: string): void {
 
 export function mark_narrow_as_read(filter: Filter): void {
     bulk_update_read_flags_for_narrow(
-        [{operator: "is", operand: "unread", negated: false}, ...filter.terms()],
+        [{operator: "is", operand: "unread", negated: false}, ...filter.terms_for_server_query()],
         "add",
     );
 }
