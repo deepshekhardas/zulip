@@ -2292,17 +2292,25 @@ def export_files_from_s3(
         for bkey in bucket.objects.filter(Prefix=object_prefix):
             # This is promised to be iterated in sorted filename order.
 
+            if bkey.key.endswith(".info"):
+                # tusd writes .info sidecar objects alongside resumable uploads
+                # (zerver/views/tusd.py); they are not attachments and carry no
+                # realm/user metadata, so they must not be exported.
+                continue
+
             if valid_hashes is not None and bkey.Object().key not in valid_hashes:
                 continue
 
             s3_obj = bucket.Object(bkey.key)
 
             if "realm_id" not in s3_obj.metadata:
-                raise AssertionError(f"Missing realm_id in object metadata: {s3_obj.metadata}")
+                raise AssertionError(
+                    f"Missing realm_id in object metadata: {s3_obj.key} / {s3_obj.metadata}"
+                )
 
             if "user_profile_id" not in s3_obj.metadata:
                 raise AssertionError(
-                    f"Missing user_profile_id in object metadata: {s3_obj.metadata}"
+                    f"Missing user_profile_id in object metadata: {s3_obj.key} / {s3_obj.metadata}"
                 )
 
             if int(s3_obj.metadata["user_profile_id"]) not in user_ids:
