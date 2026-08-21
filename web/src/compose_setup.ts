@@ -749,6 +749,18 @@ export function initialize(): void {
 
     function handle_topic_length_limit(): void {
         let topic = compose_state.topic();
+        // Strip control characters (e.g. tabs pasted into the topic
+        // box); the server rejects them and messages to such topics
+        // would fail to send.
+        const sanitized_topic = topic.replace(
+            // eslint-disable-next-line no-control-regex
+            /[\u0000-\u001f\u007f-\u009f]/g,
+            "",
+        );
+        if (sanitized_topic !== topic) {
+            topic = sanitized_topic;
+            compose_state.topic(topic);
+        }
         if (topic.length > realm.max_topic_length) {
             topic = topic.slice(0, realm.max_topic_length);
             compose_state.topic(topic);
