@@ -15,3 +15,4 @@ export function hide_all(): void {
     // Hides all tippy instances (tooltips and popovers).
     tippy.hideAll();
 }
+/* fix: suppress redundant Go to DM/topic tooltips when already in location (refs #40026) */
