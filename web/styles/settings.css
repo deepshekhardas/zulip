@@ -2543,3 +2543,13 @@ label.preferences-radio-choice-label {
     opacity: var(--opacity-disabled-profile-field-choice-input);
     color: var(--color-text-default);
 }
+
+/* fix: prevent Edit email button horizontal overflow on vertical mobile viewport (fixes #40051) */
+@media (width <= 600px) {
+    .edit_email_button,
+    #settings_email .email-section {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+}
